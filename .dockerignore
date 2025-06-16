@@ -1,0 +1,10 @@
+# Исключаем ненужные файлы из Docker контекста
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+uploads/
+*.log
+.env
+.DS_Store 
