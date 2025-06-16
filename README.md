@@ -1,11 +1,12 @@
 # File Agent
 
-Простой Go-сервер для загрузки и скачивания файлов.
+Простой Go-сервер для загрузки и скачивания файлов с использованием S3-совместимого хранилища (Minio).
 
 ## Функциональность
 
 - Загрузка файлов через `multipart/form-data` на URL `/`
 - Скачивание файлов по GET запросу на `/{uuid4}`
+- Хранение файлов в S3-совместимом хранилище (Minio)
 - Поддержка CORS
 - Health checks для Kubernetes
 - Graceful shutdown
@@ -46,7 +47,13 @@ go run main.go
 
 ```bash
 docker build -t file-agent .
-docker run -p 8080:8080 -e STORAGE_PATH=/app/uploads file-agent
+docker run -p 8082:8082 \
+  -e PORT=8082 \
+  -e S3_ENDPOINT=https://s3.example.com \
+  -e S3_ACCESS_KEY=dushes \
+  -e S3_SECRET_KEY=dsadfghgjfhdsadfsghh \
+  -e S3_BUCKET=files \
+  file-agent
 ```
 
 ### Kubernetes
@@ -70,29 +77,31 @@ spec:
       - name: file-agent
         image: file-agent:latest
         ports:
-        - containerPort: 8080
+        - containerPort: 8082
         env:
-        - name: STORAGE_PATH
-          value: "/app/uploads"
+        - name: PORT
+          value: "8082"
+        - name: S3_ENDPOINT
+          value: "https://s3.example.com"
+        - name: S3_ACCESS_KEY
+          value: "dushes"
+        - name: S3_SECRET_KEY
+          value: "safdgfhgjfhgfdasfghhffds"
+        - name: S3_BUCKET
+          value: "files"
         livenessProbe:
           httpGet:
             path: /health
-            port: 8080
+            port: 8082
           initialDelaySeconds: 10
           periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /ready
-            port: 8080
+            port: 8082
           initialDelaySeconds: 5
           periodSeconds: 10
-        volumeMounts:
-        - name: storage
-          mountPath: /app/uploads
-      volumes:
-      - name: storage
-        persistentVolumeClaim:
-          claimName: file-storage-pvc
+
 ---
 apiVersion: v1
 kind: Service
@@ -104,13 +113,17 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 8080
+      targetPort: 8082
   type: LoadBalancer
 ```
 
 ## Переменные окружения
 
-- `STORAGE_PATH` - путь для хранения файлов (по умолчанию: `./uploads`)
+- `PORT` - порт для запуска сервера (по умолчанию: `8080`)
+- `S3_ENDPOINT` - URL для S3-совместимого хранилища (по умолчанию: `https://s3.example.com`)
+- `S3_ACCESS_KEY` - ключ доступа к S3 (по умолчанию: `dushes`)
+- `S3_SECRET_KEY` - секретный ключ S3 (по умолчанию: `dfsghjkfdsafghjfds`)
+- `S3_BUCKET` - имя S3 бакета (по умолчанию: `files`)
 
 ## API Endpoints
 

@@ -35,9 +35,8 @@ WORKDIR /app
 # Копируем собранное приложение
 COPY --from=builder /app/main .
 
-# Создаем директорию для uploads
-RUN mkdir -p /app/uploads && \
-    chown -R appuser:appgroup /app
+# Настраиваем права доступа
+RUN chown -R appuser:appgroup /app
 
 # Переключаемся на непривилегированного пользователя
 USER appuser
@@ -45,12 +44,16 @@ USER appuser
 # Открываем порт
 EXPOSE 8080
 
-# Устанавливаем переменную окружения для хранения файлов
-ENV STORAGE_PATH=/app/uploads
+# Устанавливаем переменные окружения
+ENV PORT=8080
+ENV S3_ENDPOINT=https://s3.lisacorp.com
+ENV S3_ACCESS_KEY=dushes
+ENV S3_SECRET_KEY=lsagdfo43qwfoylasdgf4qy9203w7rey
+ENV S3_BUCKET=files
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
 
 # Запускаем приложение
 CMD ["./main"] 

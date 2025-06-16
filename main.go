@@ -11,24 +11,47 @@ import (
 
 	"file-agent/internal/handlers"
 	"file-agent/internal/middleware"
+	"file-agent/internal/storage"
 
 	"github.com/gorilla/mux"
 )
 
 func main() {
-	// Получаем путь для хранения файлов из environment variable
-	storagePath := os.Getenv("STORAGE_PATH")
-	if storagePath == "" {
-		storagePath = "./uploads" // значение по умолчанию
+	// Получаем порт из environment variable
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // значение по умолчанию
 	}
 
-	// Создаем директорию для хранения файлов если она не существует
-	if err := os.MkdirAll(storagePath, 0755); err != nil {
-		log.Fatalf("Failed to create storage directory: %v", err)
+	// Получаем S3 настройки из environment variables
+	s3Endpoint := os.Getenv("S3_ENDPOINT")
+	if s3Endpoint == "" {
+		s3Endpoint = "https://s3.lisacorp.com" // значение по умолчанию
+	}
+
+	accessKey := os.Getenv("S3_ACCESS_KEY")
+	if accessKey == "" {
+		accessKey = "dushes" // значение по умолчанию
+	}
+
+	secretKey := os.Getenv("S3_SECRET_KEY")
+	if secretKey == "" {
+		secretKey = "lsagdfo43qwfoylasdgf4qy9203w7rey" // значение по умолчанию
+	}
+
+	bucket := os.Getenv("S3_BUCKET")
+	if bucket == "" {
+		bucket = "files" // значение по умолчанию
+	}
+
+	// Создаем S3 storage
+	s3Storage, err := storage.NewS3Storage(s3Endpoint, accessKey, secretKey, bucket)
+	if err != nil {
+		log.Fatalf("Failed to initialize S3 storage: %v", err)
 	}
 
 	// Инициализируем хендлеры
-	fileHandler := handlers.NewFileHandler(storagePath)
+	fileHandler := handlers.NewFileHandler(s3Storage)
 
 	// Настраиваем роутер
 	r := mux.NewRouter()
@@ -46,7 +69,7 @@ func main() {
 
 	// Настраиваем сервер
 	srv := &http.Server{
-		Addr:         ":8080",
+		Addr:         ":" + port,
 		Handler:      r,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -55,7 +78,7 @@ func main() {
 
 	// Запускаем сервер в горутине
 	go func() {
-		log.Println("Server starting on :8080")
+		log.Printf("Server starting on :%s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed to start: %v", err)
 		}

@@ -1,14 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"file-agent/internal/storage"
 	"fmt"
 	"io"
-	"log"
-	"mime"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -16,13 +14,13 @@ import (
 
 // FileHandler содержит обработчики для работы с файлами
 type FileHandler struct {
-	storagePath string
+	storage *storage.S3Storage
 }
 
 // NewFileHandler создает новый FileHandler
-func NewFileHandler(storagePath string) *FileHandler {
+func NewFileHandler(s3Storage *storage.S3Storage) *FileHandler {
 	return &FileHandler{
-		storagePath: storagePath,
+		storage: s3Storage,
 	}
 }
 
@@ -57,38 +55,12 @@ func (fh *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 	// Генерируем UUID для файла
 	fileID := uuid.New().String()
 
-	// Получаем расширение файла
-	ext := filepath.Ext(header.Filename)
-	fileName := fileID + ext
-
-	// Создаем файл на диске
-	filePath := filepath.Join(fh.storagePath, fileName)
-	dst, err := os.Create(filePath)
+	// Сохраняем файл в S3
+	ctx := context.Background()
+	err = fh.storage.SaveFile(ctx, fileID, header.Filename, file, header.Size)
 	if err != nil {
-		log.Printf("Failed to create file %s: %v", filePath, err)
-		fh.writeError(w, "Failed to save file", http.StatusInternalServerError)
+		fh.writeError(w, fmt.Sprintf("Failed to save file: %v", err), http.StatusInternalServerError)
 		return
-	}
-	defer dst.Close()
-
-	// Копируем содержимое файла
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		log.Printf("Failed to copy file content: %v", err)
-		fh.writeError(w, "Failed to save file", http.StatusInternalServerError)
-		return
-	}
-
-	// Сохраняем метаданные файла
-	metadata := FileMetadata{
-		ID:       fileID,
-		Filename: header.Filename,
-		Path:     filePath,
-		Size:     header.Size,
-	}
-
-	if err := fh.saveMetadata(metadata); err != nil {
-		log.Printf("Failed to save metadata: %v", err)
 	}
 
 	// Возвращаем ответ
@@ -117,32 +89,29 @@ func (fh *FileHandler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Загружаем метаданные файла
-	metadata, err := fh.loadMetadata(fileID)
+	// Получаем файл из S3
+	ctx := context.Background()
+	fileReader, metadata, err := fh.storage.GetFile(ctx, fileID)
 	if err != nil {
 		fh.writeError(w, "File not found", http.StatusNotFound)
 		return
 	}
-
-	// Проверяем существование файла
-	if _, err := os.Stat(metadata.Path); os.IsNotExist(err) {
-		fh.writeError(w, "File not found", http.StatusNotFound)
-		return
-	}
+	defer fileReader.Close()
 
 	// Определяем MIME-тип файла
-	ext := filepath.Ext(metadata.Filename)
-	contentType := mime.TypeByExtension(ext)
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
+	contentType := storage.GetContentType(metadata.Filename)
 
 	// Устанавливаем заголовки
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", metadata.Filename))
 
-	// Отдаем файл
-	http.ServeFile(w, r, metadata.Path)
+	// Копируем содержимое файла в ответ
+	w.WriteHeader(http.StatusOK)
+	_, err = io.Copy(w, fileReader)
+	if err != nil {
+		// Логируем ошибку, но не можем уже изменить статус ответа
+		fmt.Printf("Error sending file: %v\n", err)
+	}
 }
 
 // writeError записывает ошибку в ответ
