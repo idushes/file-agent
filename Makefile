@@ -18,12 +18,15 @@ help:
 	@echo ""
 	@echo "$(GREEN)Available commands:$(NC)"
 	@echo "  help          - Показать эту справку"
-	@echo "  build         - Собрать Docker образ"
-	@echo "  tag           - Тегировать образ для Docker Hub"
-	@echo "  push          - Загрузить образ на Docker Hub"
-	@echo "  all           - Собрать, тегировать и загрузить образ"
+	@echo "  build         - Собрать мультиплатформенный образ (amd64+arm64)"
+	@echo "  build-local   - Собрать образ только для текущей платформы"
+	@echo "  build-amd64   - Собрать образ только для amd64 (Kubernetes)"
+	@echo "  push          - Собрать и загрузить мультиплатформенный образ"
+	@echo "  push-local    - Загрузить локально собранный образ"
+	@echo "  all           - Собрать и загрузить мультиплатформенный образ"
 	@echo "  test          - Протестировать образ локально"
 	@echo "  clean         - Удалить локальные образы"
+	@echo "  info          - Показать информацию о образе"
 	@echo ""
 	@echo "$(GREEN)Переменные окружения:$(NC)"
 	@echo "  DOCKER_USERNAME - имя пользователя Docker Hub (по умолчанию: dushes)"
@@ -34,11 +37,27 @@ help:
 	@echo "  make all VERSION=v1.0.0"
 	@echo "  make push DOCKER_USERNAME=myuser VERSION=v1.0.0"
 
-# Собрать Docker образ
+# Собрать мультиплатформенный Docker образ (используя облачный билдер)
 build:
-	@echo "$(GREEN)Building Docker image...$(NC)"
+	@echo "$(GREEN)Building multiplatform Docker image...$(NC)"
+	docker buildx build --platform linux/amd64,linux/arm64 \
+		-t $(IMAGE_NAME):$(VERSION) \
+		--load .
+	@echo "$(GREEN)✅ Multiplatform build completed: $(IMAGE_NAME):$(VERSION)$(NC)"
+
+# Собрать только для amd64 (для тестирования на локальной машине)
+build-local:
+	@echo "$(GREEN)Building Docker image for local testing...$(NC)"
 	docker build -t $(IMAGE_NAME):$(VERSION) .
-	@echo "$(GREEN)✅ Build completed: $(IMAGE_NAME):$(VERSION)$(NC)"
+	@echo "$(GREEN)✅ Local build completed: $(IMAGE_NAME):$(VERSION)$(NC)"
+
+# Собрать образ для amd64 (Kubernetes серверы)
+build-amd64:
+	@echo "$(GREEN)Building Docker image for amd64...$(NC)"
+	docker buildx build --platform linux/amd64 \
+		-t $(IMAGE_NAME):$(VERSION) \
+		--load .
+	@echo "$(GREEN)✅ Build completed for amd64: $(IMAGE_NAME):$(VERSION)$(NC)"
 
 # Тегировать образ для Docker Hub
 tag: build
@@ -55,15 +74,24 @@ check-login:
 	fi
 	@echo "$(GREEN)✅ Docker Hub login verified$(NC)"
 
-# Загрузить образ на Docker Hub
-push: tag check-login
-	@echo "$(GREEN)Pushing image to Docker Hub...$(NC)"
-	docker push $(FULL_IMAGE_NAME)
-	@echo "$(GREEN)✅ Pushed: $(FULL_IMAGE_NAME)$(NC)"
+# Собрать и загрузить мультиплатформенный образ на Docker Hub
+push: check-login
+	@echo "$(GREEN)Building and pushing multiplatform image to Docker Hub...$(NC)"
+	docker buildx build --platform linux/amd64,linux/arm64 \
+		-t $(FULL_IMAGE_NAME) \
+		--push .
+	@echo "$(GREEN)✅ Multiplatform image pushed: $(FULL_IMAGE_NAME)$(NC)"
 
-# Собрать, тегировать и загрузить образ
+# Загрузить локально собранный образ на Docker Hub
+push-local: check-login
+	@echo "$(GREEN)Tagging and pushing local image...$(NC)"
+	docker tag $(IMAGE_NAME):$(VERSION) $(FULL_IMAGE_NAME)
+	docker push $(FULL_IMAGE_NAME)
+	@echo "$(GREEN)✅ Local image pushed: $(FULL_IMAGE_NAME)$(NC)"
+
+# Собрать и загрузить мультиплатформенный образ
 all: push
-	@echo "$(GREEN)🎉 All done! Image available at: $(FULL_IMAGE_NAME)$(NC)"
+	@echo "$(GREEN)🎉 All done! Multiplatform image available at: $(FULL_IMAGE_NAME)$(NC)"
 
 # Протестировать образ локально
 test: build

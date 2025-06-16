@@ -16,8 +16,12 @@ RUN go mod download
 # Копируем исходный код
 COPY . .
 
-# Собираем приложение
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+# Собираем приложение для целевой архитектуры
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+ARG TARGETARCH
+RUN echo "Building on $BUILDPLATFORM for $TARGETPLATFORM"
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -a -installsuffix cgo -o main .
 
 # Финальная стадия - минимальный образ
 FROM alpine:latest
