@@ -14,13 +14,15 @@ import (
 
 // FileHandler содержит обработчики для работы с файлами
 type FileHandler struct {
-	storage *storage.S3Storage
+	storage     *storage.S3Storage
+	maxFileSize int64
 }
 
 // NewFileHandler создает новый FileHandler
-func NewFileHandler(s3Storage *storage.S3Storage) *FileHandler {
+func NewFileHandler(s3Storage *storage.S3Storage, maxFileSize int64) *FileHandler {
 	return &FileHandler{
-		storage: s3Storage,
+		storage:     s3Storage,
+		maxFileSize: maxFileSize,
 	}
 }
 
@@ -42,8 +44,8 @@ func (fh *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ограничиваем размер загружаемого файла (100MB)
-	r.ParseMultipartForm(100 << 20) // 100MB
+	// Ограничиваем размер загружаемого файла
+	r.ParseMultipartForm(fh.maxFileSize)
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -51,6 +53,12 @@ func (fh *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
+
+	// Проверяем размер файла
+	if header.Size > fh.maxFileSize {
+		fh.writeError(w, fmt.Sprintf("File size (%d bytes) exceeds maximum allowed size (%d bytes)", header.Size, fh.maxFileSize), http.StatusRequestEntityTooLarge)
+		return
+	}
 
 	// Генерируем UUID для файла
 	fileID := uuid.New().String()

@@ -54,6 +54,7 @@ ENV S3_ENDPOINT=https://s3.lisacorp.com
 ENV S3_ACCESS_KEY=dushes
 ENV S3_SECRET_KEY=lsagdfo43qwfoylasdgf4qy9203w7rey
 ENV S3_BUCKET=files
+ENV MAX_FILE_SIZE=104857600
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

@@ -34,6 +34,31 @@ curl -X POST -F "file=@example.txt" http://localhost:8080/
 curl -O http://localhost:8080/123e4567-e89b-12d3-a456-426614174000
 ```
 
+## Ограничение размера файлов
+
+По умолчанию максимальный размер загружаемого файла составляет 100MB (104857600 байт). Вы можете настроить это значение с помощью переменной окружения `MAX_FILE_SIZE`.
+
+### Примеры настройки лимита:
+
+```bash
+# Ограничить до 10MB
+export MAX_FILE_SIZE=10485760
+
+# Ограничить до 1MB  
+export MAX_FILE_SIZE=1048576
+
+# Ограничить до 500KB
+export MAX_FILE_SIZE=512000
+```
+
+При превышении лимита сервер вернет ошибку `413 Request Entity Too Large`:
+
+```json
+{
+  "error": "File size (1048576 bytes) exceeds maximum allowed size (512000 bytes)"
+}
+```
+
 ## Запуск
 
 ### Локально
@@ -80,6 +105,7 @@ docker run -p 8082:8082 \
   -e S3_ACCESS_KEY=dushes \
   -e S3_SECRET_KEY=dsadfghgjfhdsadfsghh \
   -e S3_BUCKET=files \
+  -e MAX_FILE_SIZE=104857600 \
   file-agent
 ```
 
@@ -116,6 +142,8 @@ spec:
           value: "safdgfhgjfhgfdasfghhffds"
         - name: S3_BUCKET
           value: "files"
+        - name: MAX_FILE_SIZE
+          value: "104857600"
         livenessProbe:
           httpGet:
             path: /health
@@ -151,6 +179,7 @@ spec:
 - `S3_ACCESS_KEY` - ключ доступа к S3 (по умолчанию: `dushes`)
 - `S3_SECRET_KEY` - секретный ключ S3 (по умолчанию: `dfsghjkfdsafghjfds`)
 - `S3_BUCKET` - имя S3 бакета (по умолчанию: `files`)
+- `MAX_FILE_SIZE` - максимальный размер загружаемого файла в байтах (по умолчанию: `104857600` = 100MB)
 
 ## Docker Hub
 
@@ -186,6 +215,7 @@ docker run -p 8082:8082 \
   -e S3_ACCESS_KEY=your_key \
   -e S3_SECRET_KEY=your_secret \
   -e S3_BUCKET=files \
+  -e MAX_FILE_SIZE=104857600 \
   dushes/file-agent:latest
 ```
 

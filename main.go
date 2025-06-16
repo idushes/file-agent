@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -44,6 +45,17 @@ func main() {
 		bucket = "files" // значение по умолчанию
 	}
 
+	// Получаем максимальный размер файла из environment variable
+	maxFileSizeStr := os.Getenv("MAX_FILE_SIZE")
+	var maxFileSize int64 = 100 << 20 // 100MB по умолчанию
+	if maxFileSizeStr != "" {
+		if size, err := strconv.ParseInt(maxFileSizeStr, 10, 64); err == nil && size > 0 {
+			maxFileSize = size
+		} else {
+			log.Printf("Invalid MAX_FILE_SIZE value: %s, using default: %d bytes", maxFileSizeStr, maxFileSize)
+		}
+	}
+
 	// Создаем S3 storage
 	s3Storage, err := storage.NewS3Storage(s3Endpoint, accessKey, secretKey, bucket)
 	if err != nil {
@@ -51,7 +63,7 @@ func main() {
 	}
 
 	// Инициализируем хендлеры
-	fileHandler := handlers.NewFileHandler(s3Storage)
+	fileHandler := handlers.NewFileHandler(s3Storage, maxFileSize)
 
 	// Настраиваем роутер
 	r := mux.NewRouter()
