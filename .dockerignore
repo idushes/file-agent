@@ -4,6 +4,7 @@
 README.md
 Dockerfile
 .dockerignore
+Makefile
 uploads/
 *.log
 .env

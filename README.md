@@ -45,6 +45,30 @@ go run main.go
 
 ### Docker
 
+#### Простой способ (Makefile)
+
+```bash
+# Собрать образ
+make build
+
+# Протестировать образ
+make test
+
+# Запустить контейнер локально
+make run
+
+# Остановить контейнер
+make stop
+
+# Собрать и загрузить на Docker Hub
+make all
+
+# Показать справку
+make help
+```
+
+#### Ручной способ
+
 ```bash
 docker build -t file-agent .
 docker run -p 8082:8082 \
@@ -124,6 +148,43 @@ spec:
 - `S3_ACCESS_KEY` - ключ доступа к S3 (по умолчанию: `dushes`)
 - `S3_SECRET_KEY` - секретный ключ S3 (по умолчанию: `dfsghjkfdsafghjfds`)
 - `S3_BUCKET` - имя S3 бакета (по умолчанию: `files`)
+
+## Docker Hub
+
+### Загрузка образа на Docker Hub
+
+1. Войдите в Docker Hub:
+```bash
+docker login
+```
+
+2. Соберите и загрузите образ:
+```bash
+# Загрузить с версией latest
+make all
+
+# Загрузить с определенной версией
+make all VERSION=v1.0.0
+
+# Загрузить под другим пользователем
+make all DOCKER_USERNAME=myuser VERSION=v1.0.0
+```
+
+### Использование готового образа
+
+```bash
+# Скачать образ с Docker Hub
+docker pull dushes/file-agent:latest
+
+# Запустить контейнер
+docker run -p 8082:8082 \
+  -e PORT=8082 \
+  -e S3_ENDPOINT=https://s3.example.com \
+  -e S3_ACCESS_KEY=your_key \
+  -e S3_SECRET_KEY=your_secret \
+  -e S3_BUCKET=files \
+  dushes/file-agent:latest
+```
 
 ## API Endpoints
 
