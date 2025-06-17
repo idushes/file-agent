@@ -207,6 +207,53 @@ func (s *S3Storage) GetFileMetadata(ctx context.Context, fileID string) (*FileMe
 	return s.loadMetadata(ctx, fileID)
 }
 
+// ListAllMetadata получает метаданные всех файлов для аналитики
+func (s *S3Storage) ListAllMetadata(ctx context.Context) ([]*FileMetadata, error) {
+	// Список всех объектов в папке metadata/
+	listInput := &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.bucket),
+		Prefix: aws.String("metadata/"),
+	}
+
+	var allMetadata []*FileMetadata
+
+	// Получаем все страницы результатов
+	paginator := s3.NewListObjectsV2Paginator(s.client, listInput)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list metadata objects: %w", err)
+		}
+
+		// Обрабатываем каждый объект метаданных
+		for _, obj := range page.Contents {
+			if obj.Key == nil {
+				continue
+			}
+
+			// Извлекаем fileID из ключа (metadata/{fileID}.json)
+			key := *obj.Key
+			if !strings.HasSuffix(key, ".json") {
+				continue
+			}
+
+			fileID := strings.TrimPrefix(key, "metadata/")
+			fileID = strings.TrimSuffix(fileID, ".json")
+
+			// Загружаем метаданные
+			metadata, err := s.loadMetadata(ctx, fileID)
+			if err != nil {
+				log.Printf("Failed to load metadata for %s: %v", fileID, err)
+				continue
+			}
+
+			allMetadata = append(allMetadata, metadata)
+		}
+	}
+
+	return allMetadata, nil
+}
+
 // GetContentType определяет content type файла по расширению
 func GetContentType(filename string) string {
 	ext := strings.ToLower(filename)

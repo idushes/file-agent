@@ -55,6 +55,54 @@ curl http://localhost:8080/metadata/123e4567-e89b-12d3-a456-426614174000
 }
 ```
 
+### Аналитика файлов
+
+```bash
+curl http://localhost:8080/analytics
+```
+
+Ответ:
+```json
+{
+  "total_files": 150,
+  "total_size": 52428800,
+  "periods": [
+    {
+      "period": "last_day",
+      "file_count": 12,
+      "total_size": 3145728
+    },
+    {
+      "period": "last_week", 
+      "file_count": 45,
+      "total_size": 15728640
+    },
+    {
+      "period": "last_month",
+      "file_count": 120,
+      "total_size": 41943040
+    }
+  ],
+  "top_users": [
+    {
+      "user": "john.doe",
+      "file_count": 25,
+      "total_size": 15728640
+    },
+    {
+      "user": "jane.smith",
+      "file_count": 18,
+      "total_size": 12582912
+    },
+    {
+      "user": "anonymous",
+      "file_count": 107,
+      "total_size": 24117248
+    }
+  ]
+}
+```
+
 ## Ограничение размера файлов
 
 По умолчанию максимальный размер загружаемого файла составляет 100MB (104857600 байт). Вы можете настроить это значение с помощью переменной окружения `MAX_FILE_SIZE`.
@@ -245,8 +293,10 @@ docker run -p 8082:8082 \
 - `POST /` - Загрузка файла (с опциональным полем `uploaded_by`)
 - `GET /{id}` - Скачивание файла по ID
 - `GET /metadata/{id}` - Получение метаданных файла
+- `GET /analytics` - Аналитика файлов (статистика по периодам и пользователям)
 - `GET /health` - Health check
 - `GET /ready` - Readiness check
 - `OPTIONS /` - CORS preflight для загрузки
 - `OPTIONS /{id}` - CORS preflight для скачивания
-- `OPTIONS /metadata/{id}` - CORS preflight для метаданных 
+- `OPTIONS /metadata/{id}` - CORS preflight для метаданных
+- `OPTIONS /analytics` - CORS preflight для аналитики 

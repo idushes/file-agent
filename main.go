@@ -64,6 +64,7 @@ func main() {
 
 	// Инициализируем хендлеры
 	fileHandler := handlers.NewFileHandler(s3Storage, maxFileSize)
+	analyticsHandler := handlers.NewAnalyticsHandler(s3Storage)
 
 	// Настраиваем роутер
 	r := mux.NewRouter()
@@ -75,10 +76,11 @@ func main() {
 	r.HandleFunc("/health", healthCheck).Methods("GET")
 	r.HandleFunc("/ready", readinessCheck).Methods("GET")
 
-	// API роуты
+	// API роуты (порядок важен - более специфичные роуты должны быть первыми)
 	r.HandleFunc("/", fileHandler.UploadFile).Methods("POST", "OPTIONS")
-	r.HandleFunc("/{id}", fileHandler.DownloadFile).Methods("GET", "OPTIONS")
+	r.HandleFunc("/analytics", analyticsHandler.GetAnalytics).Methods("GET", "OPTIONS")
 	r.HandleFunc("/metadata/{id}", fileHandler.GetFileMetadata).Methods("GET", "OPTIONS")
+	r.HandleFunc("/{id}", fileHandler.DownloadFile).Methods("GET", "OPTIONS")
 
 	// Настраиваем сервер
 	srv := &http.Server{
