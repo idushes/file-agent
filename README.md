@@ -16,7 +16,11 @@
 ### Загрузка файла
 
 ```bash
+# Загрузка файла без указания загрузившего
 curl -X POST -F "file=@example.txt" http://localhost:8080/
+
+# Загрузка файла с указанием загрузившего
+curl -X POST -F "file=@example.txt" -F "uploaded_by=john.doe" http://localhost:8080/
 ```
 
 Ответ:
@@ -32,6 +36,23 @@ curl -X POST -F "file=@example.txt" http://localhost:8080/
 
 ```bash
 curl -O http://localhost:8080/123e4567-e89b-12d3-a456-426614174000
+```
+
+### Получение метаданных файла
+
+```bash
+curl http://localhost:8080/metadata/123e4567-e89b-12d3-a456-426614174000
+```
+
+Ответ:
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "filename": "example.txt",
+  "size": 1024,
+  "uploaded_at": "2025-06-16T05:30:00Z",
+  "uploaded_by": "john.doe"
+}
 ```
 
 ## Ограничение размера файлов
@@ -221,9 +242,11 @@ docker run -p 8082:8082 \
 
 ## API Endpoints
 
-- `POST /` - Загрузка файла
+- `POST /` - Загрузка файла (с опциональным полем `uploaded_by`)
 - `GET /{id}` - Скачивание файла по ID
+- `GET /metadata/{id}` - Получение метаданных файла
 - `GET /health` - Health check
 - `GET /ready` - Readiness check
 - `OPTIONS /` - CORS preflight для загрузки
-- `OPTIONS /{id}` - CORS preflight для скачивания 
+- `OPTIONS /{id}` - CORS preflight для скачивания
+- `OPTIONS /metadata/{id}` - CORS preflight для метаданных 

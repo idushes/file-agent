@@ -60,12 +60,15 @@ func (fh *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Получаем информацию о том, кто загружает файл (опционально)
+	uploadedBy := r.FormValue("uploaded_by")
+
 	// Генерируем UUID для файла
 	fileID := uuid.New().String()
 
 	// Сохраняем файл в S3
 	ctx := context.Background()
-	err = fh.storage.SaveFile(ctx, fileID, header.Filename, file, header.Size)
+	err = fh.storage.SaveFile(ctx, fileID, header.Filename, file, header.Size, uploadedBy)
 	if err != nil {
 		fh.writeError(w, fmt.Sprintf("Failed to save file: %v", err), http.StatusInternalServerError)
 		return
@@ -120,6 +123,34 @@ func (fh *FileHandler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 		// Логируем ошибку, но не можем уже изменить статус ответа
 		fmt.Printf("Error sending file: %v\n", err)
 	}
+}
+
+// GetFileMetadata обрабатывает получение метаданных файла
+func (fh *FileHandler) GetFileMetadata(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	vars := mux.Vars(r)
+	fileID := vars["id"]
+
+	if fileID == "" {
+		fh.writeError(w, "File ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Получаем метаданные файла из S3
+	ctx := context.Background()
+	metadata, err := fh.storage.GetFileMetadata(ctx, fileID)
+	if err != nil {
+		fh.writeError(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	// Возвращаем метаданные
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(metadata)
 }
 
 // writeError записывает ошибку в ответ

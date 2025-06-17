@@ -78,6 +78,7 @@ func main() {
 	// API роуты
 	r.HandleFunc("/", fileHandler.UploadFile).Methods("POST", "OPTIONS")
 	r.HandleFunc("/{id}", fileHandler.DownloadFile).Methods("GET", "OPTIONS")
+	r.HandleFunc("/metadata/{id}", fileHandler.GetFileMetadata).Methods("GET", "OPTIONS")
 
 	// Настраиваем сервер
 	srv := &http.Server{

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -23,9 +24,11 @@ type S3Storage struct {
 
 // FileMetadata содержит метаданные загруженного файла
 type FileMetadata struct {
-	ID       string `json:"id"`
-	Filename string `json:"filename"`
-	Size     int64  `json:"size"`
+	ID         string    `json:"id"`
+	Filename   string    `json:"filename"`
+	Size       int64     `json:"size"`
+	UploadedAt time.Time `json:"uploaded_at"`
+	UploadedBy string    `json:"uploaded_by,omitempty"` // Информация о том, кто загрузил (опционально)
 }
 
 // NewS3Storage создает новый S3Storage
@@ -77,7 +80,7 @@ func (s *S3Storage) checkBucket(ctx context.Context) error {
 }
 
 // SaveFile сохраняет файл в S3
-func (s *S3Storage) SaveFile(ctx context.Context, fileID, filename string, content io.Reader, size int64) error {
+func (s *S3Storage) SaveFile(ctx context.Context, fileID, filename string, content io.Reader, size int64, uploadedBy string) error {
 	// Определяем ключ для файла
 	fileKey := fmt.Sprintf("files/%s", fileID)
 
@@ -98,9 +101,11 @@ func (s *S3Storage) SaveFile(ctx context.Context, fileID, filename string, conte
 
 	// Сохраняем метаданные отдельно
 	metadata := FileMetadata{
-		ID:       fileID,
-		Filename: filename,
-		Size:     size,
+		ID:         fileID,
+		Filename:   filename,
+		Size:       size,
+		UploadedAt: time.Now().UTC(),
+		UploadedBy: uploadedBy,
 	}
 
 	if err := s.saveMetadata(ctx, metadata); err != nil {
@@ -195,6 +200,11 @@ func (s *S3Storage) FileExists(ctx context.Context, fileID string) bool {
 	})
 
 	return err == nil
+}
+
+// GetFileMetadata получает только метаданные файла без загрузки самого файла
+func (s *S3Storage) GetFileMetadata(ctx context.Context, fileID string) (*FileMetadata, error) {
+	return s.loadMetadata(ctx, fileID)
 }
 
 // GetContentType определяет content type файла по расширению
