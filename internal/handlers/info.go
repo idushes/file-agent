@@ -41,13 +41,13 @@ func (h *InfoHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 				Method:      "POST",
 				Description: "Загрузить файл в хранилище",
 				Parameters: map[string]string{
-					"file": "Файл для загрузки (multipart/form-data)",
+					"file":        "Файл для загрузки (multipart/form-data)",
+					"uploaded_by": "Имя пользователя или идентификатор загрузившего (опционально)",
 				},
 				Response: map[string]interface{}{
 					"id":       "Уникальный идентификатор файла",
 					"filename": "Оригинальное имя файла",
-					"size":     "Размер файла в байтах",
-					"uploaded": "Время загрузки файла",
+					"url":      "Относительный URL для скачивания файла",
 				},
 			},
 			"GET /{id}": {
@@ -68,11 +68,11 @@ func (h *InfoHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 					"id": "Уникальный идентификатор файла",
 				},
 				Response: map[string]interface{}{
-					"id":           "Уникальный идентификатор файла",
-					"filename":     "Оригинальное имя файла",
-					"size":         "Размер файла в байтах",
-					"content_type": "MIME-тип файла",
-					"uploaded":     "Время загрузки файла",
+					"id":          "Уникальный идентификатор файла",
+					"filename":    "Оригинальное имя файла",
+					"size":        "Размер файла в байтах",
+					"uploaded_at": "Время загрузки файла в формате RFC3339",
+					"uploaded_by": "Имя пользователя или идентификатор загрузившего (если указано)",
 				},
 			},
 			"GET /analytics": {
